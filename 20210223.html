@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="name">{{name}}</div>
+    <!-- vue3 双向绑定 -->
+    <script>
+      //    1.定义监听器监听属性
+      function observe(data) {
+        if (!data || typeof data != "object") return;
+        let dep = new Dep();
+        return new Proxy(data, {
+          get(target, key) {
+            if (Dep.target) {
+              dep.addSub(Dep.target);
+            }
+            return target[key];
+          },
+          set(target, key, value) {
+            if (target[key] != value) {
+              target[key] = value;
+              dep.notify(value);
+            }
+          },
+        });
+      }
+      //定义消息订阅器 管理订阅者
+      function Dep() {
+        this.subs = [];
+      }
+      Dep.prototype.addSub = function (sub) {
+        this.subs.push(sub);
+      };
+      Dep.prototype.notify = function (value) {
+        this.subs.forEach((sub) => {
+          sub.update(value);
+        });
+      };
+      //定义订阅者
+      function Watcher(vm, key, callback) {
+        this.vm = vm;
+        this.key = key;
+        this.callback = callback;
+        this.value = this.get(); // 创建订阅者
+      }
+      Watcher.prototype = {
+        update(val) {
+          this.run(val);
+        },
+        run(val) {
+          let value = this.vm[this.key];
+          let oldVal = this.value;
+          if (oldVal != value) {
+            this.value = val;
+            this.callback.call(this.vm, this.value, oldVal);
+          }
+        },
+        get() {
+          Dep.target = this;
+          let value = this.vm[this.key];
+          Dep.target = null;
+          return value;
+        },
+      };
+      let data = {
+        name: "lyn",
+      };
+      //定义解析器
+      function selfValue(data, ele, key) {
+        this.data = observe(data);
+        ele.innerHTML = data[key]; //初始化面板
+        new Watcher(this.data, key, (value) => {
+          //创建订阅者
+          ele.innerHTML = value;
+        });
+      }
+      let ele = document.getElementById("name");
+
+      let self = new selfValue(data, ele, "name");
+      setTimeout(() => {
+        self.data.name = "rona";
+      }, 2000);
+    </script>
+  </body>
+</html>
